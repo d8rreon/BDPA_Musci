@@ -56,46 +56,53 @@ async function startServer() {
     }
   });
 
-  // Deezer API Proxy
+  // Deezer API Proxy (MOCKED for local testing)
   app.get("/api/deezer/search", async (req, res) => {
-    const { q, type } = req.query;
-    try {
-      const response = await fetch(`https://api.deezer.com/search?q=${q}`);
-      const data = await response.json();
-      
-      // Map Deezer data to our MusicItem interface
-      const results = (data.data || []).map((item: any) => ({
-        id: item.id.toString(),
-        title: item.title || item.name,
-        subtitle: item.artist?.name || (item.type === 'artist' ? 'Artist' : ''),
-        image_url: item.album?.cover_medium || item.picture_medium || "https://picsum.photos/seed/music/200/200",
-        type: item.type === 'track' ? 'song' : item.type
-      }));
-      
-      res.json(results);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch from Deezer" });
-    }
+    const { q } = req.query;
+    // Mock results based on search query
+    const mockResults = [
+      {
+        id: "mock_s1",
+        title: `${q} - Greatest Hits`,
+        subtitle: "Mock Artist One",
+        image_url: `https://picsum.photos/seed/${q}1/200/200`,
+        type: "album"
+      },
+      {
+        id: "mock_s2",
+        title: `The Best of ${q}`,
+        subtitle: "Mock Artist Two",
+        image_url: `https://picsum.photos/seed/${q}2/200/200`,
+        type: "song"
+      },
+      {
+        id: "mock_s3",
+        title: `${q} (Live at Wembley)`,
+        subtitle: "Mock Artist Three",
+        image_url: `https://picsum.photos/seed/${q}3/200/200`,
+        type: "song"
+      },
+      {
+        id: "mock_s4",
+        title: q,
+        subtitle: "Artist Profile",
+        image_url: `https://picsum.photos/seed/${q}4/200/200`,
+        type: "artist"
+      }
+    ];
+    res.json(mockResults);
   });
 
   app.get("/api/deezer/chart", async (req, res) => {
-    try {
-      const response = await fetch("https://api.deezer.com/chart");
-      const data = await response.json();
-      
-      // Map Deezer tracks chart to our MusicItem interface
-      const results = (data.tracks?.data || []).map((item: any) => ({
-        id: item.id.toString(),
-        title: item.title,
-        subtitle: item.artist?.name,
-        image_url: item.album?.cover_medium,
-        type: 'song'
-      }));
-      
-      res.json(results);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch charts from Deezer" });
-    }
+    // Mock chart data
+    const mockChart = [
+      { id: "mock_b1", title: "Flowers", subtitle: "Miley Cyrus", image_url: "https://picsum.photos/seed/flowers/200/200", type: "song" },
+      { id: "mock_b2", title: "Kill Bill", subtitle: "SZA", image_url: "https://picsum.photos/seed/killbill/200/200", type: "song" },
+      { id: "mock_b3", title: "Creepin'", subtitle: "Metro Boomin", image_url: "https://picsum.photos/seed/creepin/200/200", type: "song" },
+      { id: "mock_b4", title: "Anti-Hero", subtitle: "Taylor Swift", image_url: "https://picsum.photos/seed/antihero/200/200", type: "song" },
+      { id: "mock_b5", title: "Die For You", subtitle: "The Weeknd", image_url: "https://picsum.photos/seed/dieforyou/200/200", type: "song" },
+    ];
+    res.json(mockChart);
   });
 
   // Saved Items Routes
