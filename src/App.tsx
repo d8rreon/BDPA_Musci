@@ -28,10 +28,17 @@ const MusicCard: React.FC<MusicCardProps> = ({ item, isSaved, onToggleSave, onPl
         referrerPolicy="no-referrer"
       />
       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+        {/* TODO: Add play button functionality
+            When clicked, this button should:
+            1. Prevent event propagation: e.stopPropagation()
+            2. Call the onPlay callback with the item: onPlay?.(item)
+            3. The onPlay handler should be implementedabove to call playTrack()
+         */}
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onPlay?.(item);
+            // TODO: Call onPlay?.(item) here to trigger playTrack
+            console.log('TODO: Connect play button to onPlay handler');
           }}
           className="w-12 h-12 rounded-full bg-brand-accent flex items-center justify-center text-white shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform hover:scale-110"
         >
@@ -172,12 +179,17 @@ const MainPage = ({ user, onLogout }: { user: User; onLogout: () => void }) => {
   const [loading, setLoading] = useState(false);
   const [chartRegion, setChartRegion] = useState<'global' | 'us'>('global');
   
-  // Player state
-  const [currentTrack, setCurrentTrack] = useState<MusicItem | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(1);
+  // ===== AUDIO PLAYER STATE (SKELETON) =====
+  // TODO: Add player state variables here
+  // You need to track:
+  // 1. currentTrack - The song currently selected (use useState)
+  // 2. isPlaying - Boolean to track if audio is playing
+  // 3. currentTime - Current playback position in seconds
+  // 4. duration - Total length of the audio in seconds
+  // 5. volume - Volume level from 0 to 1
+  // 6. audioRef - Reference to the HTML audio element using useRef<HTMLAudioElement>
+  
+  // Example: const [currentTrack, setCurrentTrack] = useState<MusicItem | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
@@ -228,73 +240,90 @@ const MainPage = ({ user, onLogout }: { user: User; onLogout: () => void }) => {
     fetchSaved();
   };
 
-  // Player functions
+  // ===== AUDIO PLAYER FUNCTIONS (SKELETON) =====
+  
+  // TODO: Implement playTrack function
+  // This function should:
+  // 1. Check if track.preview_url exists (show alert if not)
+  // 2. Set currentTrack to the track parameter
+  // 3. Reset currentTime to 0
+  // 4. Set isPlaying to true
+  // 5. Set audioRef.current.src to track.preview_url
+  // 6. Call audioRef.current.play()
   const playTrack = (track: MusicItem) => {
-    if (!track.preview_url) {
-      alert('No preview available for this track. Click "Listen on Deezer" to hear the full song.');
-      return;
-    }
-    setCurrentTrack(track);
-    setCurrentTime(0);
-    setIsPlaying(true);
-    
-    if (audioRef.current) {
-      audioRef.current.src = track.preview_url;
-      audioRef.current.play();
-    }
+    console.log('TODO: Implement playTrack for track:', track.title);
   };
 
+  // TODO: Implement togglePlayPause function
+  // This function should:
+  // 1. Check if audioRef.current exists
+  // 2. If isPlaying is true: pause the audio and set isPlaying to false
+  // 3. If isPlaying is false: play the audio and set isPlaying to true
   const togglePlayPause = () => {
-    if (!audioRef.current) return;
-    
-    if (isPlaying) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-    } else {
-      audioRef.current.play();
-      setIsPlaying(true);
-    }
+    console.log('TODO: Implement togglePlayPause');
   };
 
+  // TODO: Implement handleTimeUpdate function
+  // This should be called by the audio element's onTimeUpdate event
+  // It should update currentTime to audioRef.current.currentTime
   const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
-    }
+    console.log('TODO: Implement handleTimeUpdate');
   };
 
+  // TODO: Implement handleLoadedMetadata function
+  // This should be called by the audio element's onLoadedMetadata event
+  // It should set duration to audioRef.current.duration
   const handleLoadedMetadata = () => {
-    if (audioRef.current) {
-      setDuration(audioRef.current.duration);
-    }
+    console.log('TODO: Implement handleLoadedMetadata');
   };
 
+  // TODO: Implement handleEnded function
+  // This should be called when the audio finishes playing
+  // It should set isPlaying to false
   const handleEnded = () => {
-    setIsPlaying(false);
+    console.log('TODO: Implement handleEnded');
   };
 
+  // TODO: Implement handleProgressChange function
+  // This receives event from range input (progress bar)
+  // It should:
+  // 1. Get the new time value from e.target.value
+  // 2. Update currentTime with this value
+  // 3. Set audioRef.current.currentTime to this value
   const handleProgressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newTime = parseFloat(e.target.value);
-    setCurrentTime(newTime);
-    if (audioRef.current) {
-      audioRef.current.currentTime = newTime;
-    }
+    console.log('TODO: Implement handleProgressChange');
   };
 
+  // TODO: Implement handleVolumeChange function
+  // This receives event from volume range slider
+  // It should:
+  // 1. Get the new volume value from e.target.value (0 to 1)
+  // 2. Update the volume state
+  // 3. Set audioRef.current.volume to this value
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = parseFloat(e.target.value);
-    setVolume(newVolume);
-    if (audioRef.current) {
-      audioRef.current.volume = newVolume;
-    }
+    console.log('TODO: Implement handleVolumeChange');
   };
 
+  // TODO: Implement formatTime function
+  // This converts seconds to MM:SS format
+  // Input: seconds (number)
+  // Output: string like "2:45" or "0:30"
+  // Steps:
+  // 1. Calculate minutes by dividing seconds by 60 and flooring
+  // 2. Calculate remaining seconds using modulo operator (%)
+  // 3. Pad the seconds with a leading zero if needed (e.g., "05" not "5")
+  // 4. Return formatted string "minutes:seconds"
+  const formatTime = (seconds: number) => {
+    return '0:00'; // TODO: Replace with actual implementation
+  };
+/*
   const formatTime = (seconds: number) => {
     if (!seconds || isNaN(seconds)) return '0:00';
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
-
+*/
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery) return;
@@ -495,10 +524,17 @@ const MainPage = ({ user, onLogout }: { user: User; onLogout: () => void }) => {
                   <p className="text-xs text-white/40 truncate">{item.subtitle}</p>
                 </div>
                 <div className="flex items-center gap-2">
+                  {/* TODO: Add play button functionality to Billboard charts
+                      When clicked, this button should:
+                      1. Prevent event propagation
+                      2. Call playTrack(item) to start playing the preview
+                   */}
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      playTrack(item);
+                      // TODO: Uncomment the line below after implementing playTrack
+                      // playTrack(item);
+                      console.log('TODO: Connect Billboard play button to playTrack function');
                     }}
                     className="p-2 rounded-full bg-brand-accent/20 hover:bg-brand-accent/40 text-brand-accent transition-all"
                     title="Play preview"
@@ -538,106 +574,121 @@ const MainPage = ({ user, onLogout }: { user: User; onLogout: () => void }) => {
       {/* Mini Player / Bottom Nav */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-3rem)] max-w-4xl z-40">
         <div className="glass rounded-3xl p-4 flex flex-col gap-4 shadow-2xl shadow-black/50">
-          {/* Progress bar */}
-          {currentTrack && (
+          {/* TODO: Add Progress Bar Display
+              This section should:
+              1. Only display when currentTrack exists (conditional render with {currentTrack && ...})
+              2. Show current time using formatTime(currentTime)
+              3. Have a range input for scrubbing through the track
+              4. Show total duration using formatTime(duration)
+              5. The range input should have:
+                 - min="0"
+                 - max={duration or 0}
+                 - value={currentTime}
+                 - onChange={handleProgressChange}
+           */}
+          {/* {currentTrack && (
             <div className="flex items-center gap-3">
               <span className="text-[10px] text-white/40 font-mono w-10">{formatTime(currentTime)}</span>
-              <input
-                type="range"
-                min="0"
-                max={duration || 0}
-                value={currentTime}
-                onChange={handleProgressChange}
-                className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-brand-accent"
-              />
+              <input type="range" ... />
               <span className="text-[10px] text-white/40 font-mono w-10 text-right">{formatTime(duration)}</span>
             </div>
-          )}
+          )} */}
 
-          {/* Player controls */}
+          {/* Player Content: Track Info or Placeholder */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4 flex-1">
-              {currentTrack ? (
-                <>
-                  <img 
-                    src={currentTrack.image_url} 
-                    alt={currentTrack.title}
-                    className="w-12 h-12 rounded-lg object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-semibold truncate">{currentTrack.title}</h4>
-                    <p className="text-[10px] text-white/40 truncate uppercase tracking-widest">{currentTrack.subtitle}</p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center">
-                    <Music size={24} className="text-white/20" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold">Ready to play</h4>
-                    <p className="text-[10px] text-white/40 uppercase tracking-widest">Select a track to start</p>
-                  </div>
-                </>
-              )}
+              {/* TODO: Display current track info when playing
+                  If currentTrack exists:
+                  - Show album artwork (currentTrack.image_url)
+                  - Show track title and artist
+                  
+                  Otherwise show placeholder:
+                  - Music icon
+                  - "Ready to play" message
+               */}
+              <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center">
+                <Music size={24} className="text-white/20" />
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold">Ready to play</h4>
+                <p className="text-[10px] text-white/40 uppercase tracking-widest">Select a track to start</p>
+              </div>
             </div>
             
             <div className="flex items-center gap-4">
-              {/* Play/Pause */}
+              {/* TODO: Implement Play/Pause Button
+                  This button should:
+                  1. Be disabled when currentTrack is null
+                  2. Call togglePlayPause() when clicked
+                  3. Show Pause icon when isPlaying is true
+                  4. Show Play icon when isPlaying is false
+              */}
               <button 
-                onClick={togglePlayPause}
-                disabled={!currentTrack}
-                className={cn(
-                  "p-2 rounded-full transition-colors",
-                  currentTrack 
-                    ? "text-brand-accent hover:bg-white/10" 
-                    : "text-white/20 cursor-not-allowed"
-                )}
+                onClick={() => console.log('TODO: Connect to togglePlayPause')}
+                disabled={false} // TODO: Set to !currentTrack
+                className="p-2 rounded-full transition-colors text-white/20 cursor-not-allowed"
               >
-                {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
+                <Play size={20} fill="currentColor" />
               </button>
 
-              {/* Volume control */}
-              <div className="hidden sm:flex items-center gap-2">
+              {/* TODO: Add Volume Control (Desktop Only)
+                  This section should:
+                  1. Only show on desktop screens (use hidden sm:flex)
+                  2. Show volume icon
+                  3. Have a range input (0 to 1, step 0.1)
+                  4. onChange should call handleVolumeChange
+              */}
+              {/* <div className="hidden sm:flex items-center gap-2">
                 <Volume2 size={16} className="text-white/40" />
                 <input
                   type="range"
                   min="0"
                   max="1"
                   step="0.1"
-                  value={volume}
                   onChange={handleVolumeChange}
                   className="w-16 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-brand-accent"
                 />
-              </div>
+              </div> */}
 
-              {/* Listen on Deezer button */}
-              {currentTrack?.deezer_url && (
-                <a
-                  href={currentTrack.deezer_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-brand-accent text-white text-xs font-medium hover:bg-brand-accent/90 transition-colors"
-                  title="Open full track on Deezer"
-                >
+              {/* TODO: Add "Listen on Deezer" Link Button
+                  This button should:
+                  1. Only display when currentTrack exists AND currentTrack.deezer_url exists
+                  2. Open the Deezer URL in a new tab (target="_blank")
+                  3. Show an ExternalLink icon
+                  4. Show "Listen" text on desktop (hidden on mobile using hidden sm:inline)
+                  5. Example: {currentTrack?.deezer_url && ( <a href="...">... )}
+              */}
+              {/* {currentTrack?.deezer_url && (
+                <a href={currentTrack.deezer_url} target="_blank" rel="noopener noreferrer" className="...">
                   <ExternalLink size={14} />
                   <span className="hidden sm:inline">Listen</span>
                 </a>
-              )}
+              )} */}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Hidden audio element */}
-      <audio
-        ref={audioRef}
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
-        onEnded={handleEnded}
-        crossOrigin="anonymous"
-      />
+      {/* TODO: Add Hidden Audio Element
+          This is the HTML audio element that actually plays the sound
+          Requirements:
+          1. Use ref={audioRef} to connect it to your audioRef
+          2. Set crossOrigin="anonymous" for CORS compatibility
+          3. Add event handlers:
+             - onTimeUpdate={handleTimeUpdate} - tracks current playback position
+             - onLoadedMetadata={handleLoadedMetadata} - gets total duration when metadata loads
+             - onEnded={handleEnded} - called when audio finishes playing
+          4. Don't put this in render, keep it as is - it doesn't need to display
+          
+          Example:
+          <audio
+            ref={audioRef}
+            onTimeUpdate={handleTimeUpdate}
+            onLoadedMetadata={handleLoadedMetadata}
+            onEnded={handleEnded}
+            crossOrigin="anonymous"
+          />
+      */}
     </div>
   );
 };
