@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Heart, Music, User as UserIcon, Disc, BarChart3, LogOut, ChevronRight, Play, Plus, X } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, Heart, Music, User as UserIcon, Disc, BarChart3, LogOut, ChevronRight, Play, Plus, X, Pause, Volume2, ExternalLink, SkipForward } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from './lib/utils';
 import { User, MusicItem, SavedItem } from './types';
@@ -19,7 +19,6 @@ const MusicCard: React.FC<MusicCardProps> = ({ item, isSaved, onToggleSave, onPl
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     className="group relative glass rounded-2xl p-4 transition-all hover:bg-white/10 cursor-pointer"
-    onClick={() => onPlay?.(item)}
   >
     <div className="relative aspect-square overflow-hidden rounded-xl mb-4">
       <img 
@@ -29,9 +28,15 @@ const MusicCard: React.FC<MusicCardProps> = ({ item, isSaved, onToggleSave, onPl
         referrerPolicy="no-referrer"
       />
       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-        <div className="w-12 h-12 rounded-full bg-brand-accent flex items-center justify-center text-white shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onPlay?.(item);
+          }}
+          className="w-12 h-12 rounded-full bg-brand-accent flex items-center justify-center text-white shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform hover:scale-110"
+        >
           <Play size={24} fill="currentColor" />
-        </div>
+        </button>
       </div>
       <button 
         onClick={(e) => {
@@ -165,17 +170,32 @@ const MainPage = ({ user, onLogout }: { user: User; onLogout: () => void }) => {
   const [savedItems, setSavedItems] = useState<SavedItem[]>([]);
   const [searchResults, setSearchResults] = useState<MusicItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [chartRegion, setChartRegion] = useState<'global' | 'us'>('global');
+  
+  // Player state
+  const [currentTrack, setCurrentTrack] = useState<MusicItem | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
     fetchBillboard();
     fetchSaved();
   }, [user.id]);
 
+  useEffect(() => {
+    fetchBillboard();
+  }, [chartRegion]);
+
   const fetchBillboard = async () => {
     try {
-      const res = await fetch('/api/deezer/chart');
+      const res = await fetch('/api/charts/billboard');
       const data = await res.json();
-      setBillboardCharts(data);
+      // Sort by rank to ensure correct chart order
+      const sortedData = data.sort((a: any, b: any) => (a.rank || 999) - (b.rank || 999));
+      setBillboardCharts(sortedData);
     } catch (err) {
       console.error("Failed to fetch charts", err);
     }
@@ -206,6 +226,73 @@ const MainPage = ({ user, onLogout }: { user: User; onLogout: () => void }) => {
       });
     }
     fetchSaved();
+  };
+
+  // Player functions
+  const playTrack = (track: MusicItem) => {
+    if (!track.preview_url) {
+      alert('No preview available for this track. Click "Listen on Deezer" to hear the full song.');
+      return;
+    }
+    setCurrentTrack(track);
+    setCurrentTime(0);
+    setIsPlaying(true);
+    
+    if (audioRef.current) {
+      audioRef.current.src = track.preview_url;
+      audioRef.current.play();
+    }
+  };
+
+  const togglePlayPause = () => {
+    if (!audioRef.current) return;
+    
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play();
+      setIsPlaying(true);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration);
+    }
+  };
+
+  const handleEnded = () => {
+    setIsPlaying(false);
+  };
+
+  const handleProgressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newTime = parseFloat(e.target.value);
+    setCurrentTime(newTime);
+    if (audioRef.current) {
+      audioRef.current.currentTime = newTime;
+    }
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVolume = parseFloat(e.target.value);
+    setVolume(newVolume);
+    if (audioRef.current) {
+      audioRef.current.volume = newVolume;
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    if (!seconds || isNaN(seconds)) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -333,6 +420,7 @@ const MainPage = ({ user, onLogout }: { user: User; onLogout: () => void }) => {
                   item={item} 
                   isSaved={savedItems.some(s => s.item_id === item.id)}
                   onToggleSave={toggleSave}
+                  onPlay={playTrack}
                 />
               ))
             ) : (
@@ -355,12 +443,38 @@ const MainPage = ({ user, onLogout }: { user: User; onLogout: () => void }) => {
         <section className="mt-20">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-3xl font-serif italic mb-1">Billboard Hot 100</h2>
-              <p className="text-white/40 text-sm">The most popular songs this week.</p>
+              <h2 className="text-3xl font-serif italic mb-1">Charts</h2>
+              <p className="text-white/40 text-sm">Top trending songs {chartRegion === 'us' ? 'in the US' : 'worldwide'}.</p>
             </div>
-            <button className="flex items-center gap-2 text-brand-accent hover:underline text-sm font-medium">
-              View All <ChevronRight size={16} />
-            </button>
+            <div className="flex items-center gap-4">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setChartRegion('global')}
+                  className={cn(
+                    "px-4 py-2 rounded-lg font-medium text-sm transition-all",
+                    chartRegion === 'global'
+                      ? "bg-brand-accent text-white"
+                      : "bg-white/10 text-white/60 hover:text-white"
+                  )}
+                >
+                  Global
+                </button>
+                <button
+                  onClick={() => setChartRegion('us')}
+                  className={cn(
+                    "px-4 py-2 rounded-lg font-medium text-sm transition-all",
+                    chartRegion === 'us'
+                      ? "bg-brand-accent text-white"
+                      : "bg-white/10 text-white/60 hover:text-white"
+                  )}
+                >
+                  US
+                </button>
+              </div>
+              <button className="flex items-center gap-2 text-brand-accent hover:underline text-sm font-medium">
+                View All <ChevronRight size={16} />
+              </button>
+            </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -380,18 +494,41 @@ const MainPage = ({ user, onLogout }: { user: User; onLogout: () => void }) => {
                   <h4 className="font-semibold text-sm truncate">{item.title}</h4>
                   <p className="text-xs text-white/40 truncate">{item.subtitle}</p>
                 </div>
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleSave(item);
-                  }}
-                  className={cn(
-                    "p-2 rounded-full transition-all",
-                    savedItems.some(s => s.item_id === item.id) ? "text-brand-accent" : "text-white/20 hover:text-white"
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      playTrack(item);
+                    }}
+                    className="p-2 rounded-full bg-brand-accent/20 hover:bg-brand-accent/40 text-brand-accent transition-all"
+                    title="Play preview"
+                  >
+                    <Play size={16} fill="currentColor" />
+                  </button>
+                  {item.deezer_url && (
+                    <a
+                      href={item.deezer_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-all"
+                      title="Listen on Deezer"
+                    >
+                      <ExternalLink size={16} />
+                    </a>
                   )}
-                >
-                  <Heart size={18} fill={savedItems.some(s => s.item_id === item.id) ? "currentColor" : "none"} />
-                </button>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleSave(item);
+                    }}
+                    className={cn(
+                      "p-2 rounded-full transition-all",
+                      savedItems.some(s => s.item_id === item.id) ? "text-brand-accent" : "text-white/20 hover:text-white"
+                    )}
+                  >
+                    <Heart size={16} fill={savedItems.some(s => s.item_id === item.id) ? "currentColor" : "none"} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -400,28 +537,107 @@ const MainPage = ({ user, onLogout }: { user: User; onLogout: () => void }) => {
 
       {/* Mini Player / Bottom Nav */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-3rem)] max-w-4xl z-40">
-        <div className="glass rounded-3xl p-4 flex items-center justify-between shadow-2xl shadow-black/50">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center overflow-hidden">
-              <Music size={24} className="text-white/20" />
+        <div className="glass rounded-3xl p-4 flex flex-col gap-4 shadow-2xl shadow-black/50">
+          {/* Progress bar */}
+          {currentTrack && (
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] text-white/40 font-mono w-10">{formatTime(currentTime)}</span>
+              <input
+                type="range"
+                min="0"
+                max={duration || 0}
+                value={currentTime}
+                onChange={handleProgressChange}
+                className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-brand-accent"
+              />
+              <span className="text-[10px] text-white/40 font-mono w-10 text-right">{formatTime(duration)}</span>
             </div>
-            <div>
-              <h4 className="text-sm font-semibold">Ready to play</h4>
-              <p className="text-[10px] text-white/40 uppercase tracking-widest">Select a track to start</p>
+          )}
+
+          {/* Player controls */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4 flex-1">
+              {currentTrack ? (
+                <>
+                  <img 
+                    src={currentTrack.image_url} 
+                    alt={currentTrack.title}
+                    className="w-12 h-12 rounded-lg object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-semibold truncate">{currentTrack.title}</h4>
+                    <p className="text-[10px] text-white/40 truncate uppercase tracking-widest">{currentTrack.subtitle}</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center">
+                    <Music size={24} className="text-white/20" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold">Ready to play</h4>
+                    <p className="text-[10px] text-white/40 uppercase tracking-widest">Select a track to start</p>
+                  </div>
+                </>
+              )}
             </div>
-          </div>
-          
-          <div className="flex items-center gap-6">
-            <button className="text-white/40 hover:text-white transition-colors">
-              <Play size={24} fill="currentColor" />
-            </button>
-            <div className="h-8 w-px bg-white/10 hidden sm:block" />
-            <div className="hidden sm:flex items-center gap-2">
-              <span className="text-[10px] text-white/40 font-mono">0:00 / 0:00</span>
+            
+            <div className="flex items-center gap-4">
+              {/* Play/Pause */}
+              <button 
+                onClick={togglePlayPause}
+                disabled={!currentTrack}
+                className={cn(
+                  "p-2 rounded-full transition-colors",
+                  currentTrack 
+                    ? "text-brand-accent hover:bg-white/10" 
+                    : "text-white/20 cursor-not-allowed"
+                )}
+              >
+                {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
+              </button>
+
+              {/* Volume control */}
+              <div className="hidden sm:flex items-center gap-2">
+                <Volume2 size={16} className="text-white/40" />
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={volume}
+                  onChange={handleVolumeChange}
+                  className="w-16 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-brand-accent"
+                />
+              </div>
+
+              {/* Listen on Deezer button */}
+              {currentTrack?.deezer_url && (
+                <a
+                  href={currentTrack.deezer_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-brand-accent text-white text-xs font-medium hover:bg-brand-accent/90 transition-colors"
+                  title="Open full track on Deezer"
+                >
+                  <ExternalLink size={14} />
+                  <span className="hidden sm:inline">Listen</span>
+                </a>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Hidden audio element */}
+      <audio
+        ref={audioRef}
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleLoadedMetadata}
+        onEnded={handleEnded}
+        crossOrigin="anonymous"
+      />
     </div>
   );
 };

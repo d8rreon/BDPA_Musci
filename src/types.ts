@@ -10,6 +10,9 @@ export interface MusicItem {
   subtitle: string;
   image_url: string;
   type: 'song' | 'artist' | 'album' | 'chart';
+  preview_url?: string;
+  deezer_url?: string;
+  rank?: number;
 }
 
 export interface SavedItem extends MusicItem {

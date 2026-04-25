@@ -3,6 +3,7 @@ import { createServer as createViteServer } from "vite";
 import Database from "better-sqlite3";
 import path from "path";
 import { fileURLToPath } from "url";
+import axios from "axios";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -122,15 +123,62 @@ async function startServer() {
     res.json({ success: true });
   });
 
-  // Mock Billboard Data
-  app.get("/api/charts/billboard", (req, res) => {
-    res.json([
-      { id: "b1", title: "Flowers", subtitle: "Miley Cyrus", image_url: "https://picsum.photos/seed/flowers/200/200", type: "song" },
-      { id: "b2", title: "Kill Bill", subtitle: "SZA", image_url: "https://picsum.photos/seed/killbill/200/200", type: "song" },
-      { id: "b3", title: "Creepin'", subtitle: "Metro Boomin, The Weeknd & 21 Savage", image_url: "https://picsum.photos/seed/creepin/200/200", type: "song" },
-      { id: "b4", title: "Anti-Hero", subtitle: "Taylor Swift", image_url: "https://picsum.photos/seed/antihero/200/200", type: "song" },
-      { id: "b5", title: "Die For You", subtitle: "The Weeknd & Ariana Grande", image_url: "https://picsum.photos/seed/dieforyou/200/200", type: "song" },
-    ]);
+  // Billboard Hot 100 Chart via Deezer API
+  app.get("/api/charts/billboard", async (req, res) => {
+    try {
+      // Chart IDs for different regions on Deezer
+      // 0 = Global/World Chart, 840 = United States
+      const region = req.query.region as string || "global";
+      const chartId = region === "us" ? "840" : "0";
+      
+      // Fetch the top 100 chart from Deezer for the specified region
+      // Deezer's charts also function as curated playlists
+      const response = await axios.get(`https://api.deezer.com/chart/${chartId}/tracks`, {
+        params: {
+          limit: 100,
+          index: 0
+        }
+      });
+      
+      if (!response.data.data || response.data.data.length === 0) {
+        throw new Error("No chart data received from Deezer");
+      }
+
+      const chartData = response.data.data
+        .map((track: any, index: number) => {
+          // Use the position from the API if available, otherwise use index
+          const rank = track.position !== undefined ? track.position : index + 1;
+          return {
+            id: `${region}_${track.id}`,
+            title: track.title,
+            subtitle: track.artist.name,
+            image_url: track.album.cover_big || track.album.cover_medium,
+            type: "song",
+            rank: rank,
+            deezer_url: track.link,
+            preview_url: track.preview,
+            album: track.album.title,
+            artist_id: track.artist.id
+          };
+        })
+        .sort((a: any, b: any) => a.rank - b.rank);
+
+      // Log successful fetch
+      console.log(`✓ Fetched ${chartData.length} songs from ${region === 'us' ? 'US' : 'Global'} chart`);
+      console.log(`First song: ${chartData[0].title} by ${chartData[0].subtitle} (rank: ${chartData[0].rank})`);
+      
+      res.json(chartData);
+    } catch (error) {
+      console.error(`Error fetching ${req.query.region || 'global'} chart from Deezer:`, error);
+      // Fallback to mock data if API fails
+      res.json([
+        { id: "b1", title: "Flowers", subtitle: "Miley Cyrus", image_url: "https://picsum.photos/seed/flowers/200/200", type: "song", rank: 1 },
+        { id: "b2", title: "Kill Bill", subtitle: "SZA", image_url: "https://picsum.photos/seed/killbill/200/200", type: "song", rank: 2 },
+        { id: "b3", title: "Creepin'", subtitle: "Metro Boomin, The Weeknd & 21 Savage", image_url: "https://picsum.photos/seed/creepin/200/200", type: "song", rank: 3 },
+        { id: "b4", title: "Anti-Hero", subtitle: "Taylor Swift", image_url: "https://picsum.photos/seed/antihero/200/200", type: "song", rank: 4 },
+        { id: "b5", title: "Die For You", subtitle: "The Weeknd & Ariana Grande", image_url: "https://picsum.photos/seed/dieforyou/200/200", type: "song", rank: 5 },
+      ]);
+    }
   });
 
   // Vite middleware for development
